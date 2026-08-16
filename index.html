@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Bar Match</title>
+<meta name="theme-color" content="#161C19" />
+<meta name="description" content="Tap what's on your shelf, see every cocktail and shooter you can make right now — with volumes, batch scaling, and step-by-step build order." />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Bar Match" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  html, body { background:#161C19; margin:0; }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect } = React;
+
+// ---------- Ingredient catalog ----------
+const SPIRITS = [
+  { id: "vodka", name: "Vodka", family: "vodka" },
+  { id: "gin", name: "Gin", family: "gin" },
+  { id: "white_rum", name: "White Rum", family: "rum" },
+  { id: "dark_rum", name: "Dark Rum", family: "rum" },
+  { id: "tequila", name: "Tequila", family: "tequila" },
+  { id: "bourbon", name: "Bourbon", family: "whiskey" },
+  { id: "rye", name: "Rye Whiskey", family: "whiskey" },
+  { id: "scotch", name: "Scotch", family: "whiskey" },
+  { id: "triple_sec", name: "Triple Sec", family: "orange_liqueur" },
+  { id: "cointreau", name: "Cointreau", family: "orange_liqueur" },
+  { id: "coffee_liqueur", name: "Coffee Liqueur", family: "coffee_liqueur" },
+  { id: "irish_cream", name: "Irish Cream", family: "irish_cream" },
+  { id: "peach_schnapps", name: "Peach Schnapps", family: "peach_schnapps" },
+  { id: "amaretto", name: "Amaretto", family: "amaretto" },
+  { id: "vermouth_dry", name: "Dry Vermouth", family: "vermouth_dry" },
+  { id: "vermouth_sweet", name: "Sweet Vermouth", family: "vermouth_sweet" },
+  { id: "campari", name: "Campari", family: "campari" },
+  { id: "prosecco", name: "Prosecco", family: "sparkling" },
+];
+
+const MIXERS = [
+  { id: "lime_juice", name: "Lime Juice", family: "lime_juice" },
+  { id: "lemon_juice", name: "Lemon Juice", family: "lemon_juice" },
+  { id: "simple_syrup", name: "Simple Syrup", family: "sweetener" },
+  { id: "cola", name: "Cola", family: "cola" },
+  { id: "soda_water", name: "Soda Water", family: "soda_water" },
+  { id: "tonic", name: "Tonic Water", family: "tonic" },
+  { id: "ginger_beer", name: "Ginger Beer", family: "ginger_beer" },
+  { id: "orange_juice", name: "Orange Juice", family: "orange_juice" },
+  { id: "cranberry_juice", name: "Cranberry Juice", family: "cranberry_juice" },
+  { id: "pineapple_juice", name: "Pineapple Juice", family: "pineapple_juice" },
+  { id: "grenadine", name: "Grenadine", family: "grenadine" },
+  { id: "bitters", name: "Angostura Bitters", family: "bitters" },
+  { id: "cream", name: "Cream", family: "cream" },
+  { id: "coffee", name: "Espresso", family: "coffee" },
+];
+
+const ALL_INGREDIENTS = [...SPIRITS, ...MIXERS];
+const familyName = (fam) =>
+  ALL_INGREDIENTS.find((i) => i.family === fam)?.name.replace(/^(Dry|Sweet|White|Dark) /, "") || fam;
+
+// Rough real-world liquid colors, used for the poured-glass diagram
+const FAMILY_COLOR = {
+  vodka: "#EDEAE2", gin: "#E3E9DD", rum: "#C98A4B", tequila: "#EEE3C4",
+  whiskey: "#B87333", orange_liqueur: "#E8A33D", coffee_liqueur: "#3E2A1B",
+  irish_cream: "#DCC7A3", peach_schnapps: "#F2B6A0", amaretto: "#8B4A2B",
+  vermouth_dry: "#E8DCC0", vermouth_sweet: "#7A2E2E", campari: "#C2242D",
+  sparkling: "#F0E6C0", lime_juice: "#C7DB5B", lemon_juice: "#E8E27A",
+  sweetener: "#F5EDD8", cola: "#3B2314", soda_water: "#EAF3F5",
+  tonic: "#EAF3F0", ginger_beer: "#E3B564", orange_juice: "#F5A623",
+  cranberry_juice: "#9B1B30", pineapple_juice: "#F4E06A", grenadine: "#9B1B30",
+  bitters: "#5C1A1A", cream: "#F5EFE0", coffee: "#3B2314",
+};
+
+const METHOD_STEPS = {
+  shaken: ["Add all ingredients to a shaker with ice.", "Shake hard for 10–15 seconds, until the shaker frosts over.", "Strain into a chilled glass.", "Add garnish and serve."],
+  stirred: ["Add all ingredients to a mixing glass with ice.", "Stir for 20–30 seconds until well chilled and diluted.", "Strain into a chilled glass.", "Add garnish and serve."],
+  built: ["Fill the glass with ice.", "Add ingredients directly to the glass, in the order listed.", "Stir briefly, just to combine.", "Add garnish and serve."],
+  layered: ["Pour the first (bottom) ingredient straight into the glass.", "For each ingredient after that, pour slowly over the back of a bar spoon held just above the surface — this keeps the layers from mixing.", "Work through the list bottom to top, in order.", "Serve immediately, unstirred and straight."],
+};
+
+const METHOD_LABEL = { shaken: "Shaken", stirred: "Stirred", built: "Built", layered: "Layered" };
+
+// need: bottom-to-top pour order for layered drinks; order doesn't matter for other methods
+// oz = fluid ounces per single serving. dash = fixed dashes, never scales with batch.
+const RECIPES = [
+  { name: "Margarita", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "tequila", oz: 2 }, { family: "orange_liqueur", oz: 1 }, { family: "lime_juice", oz: 1 }], garnish: "Salt rim, lime wheel" },
+  { name: "Daiquiri", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "rum", oz: 2 }, { family: "lime_juice", oz: 1 }, { family: "sweetener", oz: 0.75 }], garnish: "Lime wheel" },
+  { name: "Whiskey Sour", type: "cocktail", method: "shaken", glass: "Rocks", need: [{ family: "whiskey", oz: 2 }, { family: "lemon_juice", oz: 0.75 }, { family: "sweetener", oz: 0.75 }], garnish: "Cherry, orange twist" },
+  { name: "Old Fashioned", type: "cocktail", method: "stirred", glass: "Rocks", need: [{ family: "whiskey", oz: 2 }, { family: "sweetener", oz: 0.25 }, { family: "bitters", dash: 2 }], garnish: "Orange twist" },
+  { name: "Negroni", type: "cocktail", method: "stirred", glass: "Rocks", need: [{ family: "gin", oz: 1 }, { family: "campari", oz: 1 }, { family: "vermouth_sweet", oz: 1 }], garnish: "Orange peel" },
+  { name: "Martini", type: "cocktail", method: "stirred", glass: "Coupe", need: [{ family: "gin", oz: 2.5 }, { family: "vermouth_dry", oz: 0.5 }], garnish: "Olive or lemon twist" },
+  { name: "Cosmopolitan", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "vodka", oz: 1.5 }, { family: "orange_liqueur", oz: 0.5 }, { family: "cranberry_juice", oz: 0.5 }, { family: "lime_juice", oz: 0.5 }], garnish: "Lime wheel" },
+  { name: "Moscow Mule", type: "cocktail", method: "built", glass: "Copper Mug", need: [{ family: "vodka", oz: 2 }, { family: "ginger_beer", oz: 4 }, { family: "lime_juice", oz: 0.5 }], garnish: "Lime wedge, mint" },
+  { name: "Dark 'n' Stormy", type: "cocktail", method: "built", glass: "Highball", need: [{ family: "rum", oz: 2 }, { family: "ginger_beer", oz: 4 }, { family: "lime_juice", oz: 0.5 }], garnish: "Lime wedge" },
+  { name: "Rum & Coke", type: "cocktail", method: "built", glass: "Highball", need: [{ family: "rum", oz: 2 }, { family: "cola", oz: 4 }], garnish: "Lime wedge" },
+  { name: "Gin & Tonic", type: "cocktail", method: "built", glass: "Highball", need: [{ family: "gin", oz: 2 }, { family: "tonic", oz: 4 }], garnish: "Lime wheel" },
+  { name: "Screwdriver", type: "cocktail", method: "built", glass: "Highball", need: [{ family: "vodka", oz: 2 }, { family: "orange_juice", oz: 4 }], garnish: "Orange slice" },
+  { name: "Tequila Sunrise", type: "cocktail", method: "built", glass: "Highball", need: [{ family: "tequila", oz: 2 }, { family: "orange_juice", oz: 4 }, { family: "grenadine", oz: 0.5 }], garnish: "Orange slice, cherry" },
+  { name: "Piña Colada", type: "cocktail", method: "shaken", glass: "Hurricane", need: [{ family: "rum", oz: 2 }, { family: "pineapple_juice", oz: 3 }, { family: "cream", oz: 1 }], garnish: "Pineapple wedge" },
+  { name: "White Russian", type: "cocktail", method: "built", glass: "Rocks", need: [{ family: "vodka", oz: 2 }, { family: "coffee_liqueur", oz: 1 }, { family: "cream", oz: 0.5 }], garnish: "None" },
+  { name: "Espresso Martini", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "vodka", oz: 1.5 }, { family: "coffee_liqueur", oz: 0.5 }, { family: "coffee", oz: 1 }], garnish: "Coffee beans" },
+  { name: "Amaretto Sour", type: "cocktail", method: "shaken", glass: "Rocks", need: [{ family: "amaretto", oz: 2 }, { family: "lemon_juice", oz: 0.75 }, { family: "sweetener", oz: 0.5 }], garnish: "Cherry" },
+  { name: "Bellini", type: "cocktail", method: "built", glass: "Flute", need: [{ family: "sparkling", oz: 3 }, { family: "pineapple_juice", oz: 2 }], garnish: "None" },
+  { name: "Vodka Soda", type: "cocktail", method: "built", glass: "Highball", need: [{ family: "vodka", oz: 2 }, { family: "soda_water", oz: 4 }, { family: "lime_juice", oz: 0.25 }], garnish: "Lime wedge" },
+  { name: "Sidecar", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "whiskey", oz: 1.5 }, { family: "orange_liqueur", oz: 1 }, { family: "lemon_juice", oz: 0.75 }], garnish: "Sugar rim" },
+
+  { name: "B-52", type: "shooter", method: "layered", glass: "Shot", need: [{ family: "coffee_liqueur", oz: 0.5 }, { family: "irish_cream", oz: 0.5 }, { family: "orange_liqueur", oz: 0.5 }], garnish: "Unstirred" },
+  { name: "Kamikaze", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "vodka", oz: 0.5 }, { family: "orange_liqueur", oz: 0.5 }, { family: "lime_juice", oz: 0.5 }], garnish: "None" },
+  { name: "Lemon Drop", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "vodka", oz: 0.5 }, { family: "orange_liqueur", oz: 0.5 }, { family: "lemon_juice", oz: 0.5 }], garnish: "Sugar rim" },
+  { name: "Buttery Nipple", type: "shooter", method: "layered", glass: "Shot", need: [{ family: "peach_schnapps", oz: 0.75 }, { family: "irish_cream", oz: 0.75 }], garnish: "Unstirred" },
+  { name: "Alabama Slammer", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "amaretto", oz: 0.5 }, { family: "peach_schnapps", oz: 0.5 }, { family: "orange_juice", oz: 0.5 }], garnish: "None" },
+  { name: "Mind Eraser", type: "shooter", method: "layered", glass: "Rocks", need: [{ family: "vodka", oz: 1 }, { family: "coffee_liqueur", oz: 1 }, { family: "soda_water", oz: 1 }], garnish: "Straw — drink in one go, unstirred" },
+  { name: "Fuzzy Navel Shot", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "peach_schnapps", oz: 0.75 }, { family: "orange_juice", oz: 0.75 }], garnish: "None" },
+];
+
+// ---------- Helpers ----------
+function matchRecipe(recipe, ownedFamilies) {
+  const missing = recipe.need.filter((n) => !ownedFamilies.has(n.family));
+  return { recipe, missing, missingCount: missing.length, canMake: missing.length === 0 };
+}
+
+const trimNum = (n) => (Math.round(n * 100) / 100).toString().replace(/\.0+$/, "").replace(/(\.\d)0$/, "$1");
+const ozToMl = (oz) => Math.round((oz * 29.5735) / 5) * 5;
+
+function formatAmount(item, servings, unit) {
+  if (item.dash) return `${item.dash} dash${item.dash > 1 ? "es" : ""}`; // fixed — added fresh per glass
+  const totalOz = item.oz * servings;
+  return unit === "oz" ? `${trimNum(totalOz)} oz` : `${ozToMl(totalOz)} ml`;
+}
+
+function hexToRgb(hex) {
+  const v = hex.replace("#", "");
+  return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
+}
+function blendColor(need) {
+  const total = need.reduce((s, n) => s + (n.oz || 0), 0) || 1;
+  let r = 0, g = 0, b = 0;
+  need.forEach((n) => {
+    if (!n.oz) return;
+    const [rr, gg, bb] = hexToRgb(FAMILY_COLOR[n.family] || "#B8875A");
+    const w = n.oz / total;
+    r += rr * w; g += gg * w; b += bb * w;
+  });
+  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}
+
+// ---------- Glass art ----------
+function GlassArt({ recipe, size = 96 }) {
+  const measured = recipe.need.filter((n) => n.oz);
+  const total = measured.reduce((s, n) => s + n.oz, 0) || 1;
+  const w = size, h = size * 1.35;
+  const cupTop = h * 0.12, cupBottom = h * 0.92, cupLeft = w * 0.22, cupRight = w * 0.78;
+
+  if (recipe.method === "layered") {
+    let acc = 0;
+    const bands = measured.map((n) => {
+      const frac = n.oz / total;
+      const y1 = cupBottom - acc * (cupBottom - cupTop) / total * total; // placeholder, recompute below
+      acc += n.oz;
+      return { n, frac };
+    });
+    // recompute band rects bottom-up
+    let yCursor = cupBottom;
+    const rects = [];
+    measured.forEach((n) => {
+      const bandH = (n.oz / total) * (cupBottom - cupTop);
+      rects.push({ y: yCursor - bandH, h: bandH, color: FAMILY_COLOR[n.family] || "#B8875A" });
+      yCursor -= bandH;
+    });
+    return (
+      <svg viewBox={`0 0 ${w} ${h}`} width={size} height={size * 1.35}>
+        <path d={`M${cupLeft},${cupTop} L${cupRight},${cupTop} L${cupRight - 4},${cupBottom} Q${(cupLeft+cupRight)/2},${cupBottom+6} ${cupLeft + 4},${cupBottom} Z`} fill="#0D1210" stroke="#3A4A44" strokeWidth="1.5" />
+        {rects.map((r, i) => (
+          <rect key={i} x={cupLeft + 1} y={r.y} width={cupRight - cupLeft - 2} height={r.h} fill={r.color} />
+        ))}
+        <path d={`M${cupLeft},${cupTop} L${cupRight},${cupTop} L${cupRight - 4},${cupBottom} Q${(cupLeft+cupRight)/2},${cupBottom+6} ${cupLeft + 4},${cupBottom} Z`} fill="none" stroke="#3A4A44" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+
+  const fillFrac = Math.min(total / 6, 1); // visual cap so 4-6oz drinks read as "full"
+  const liquidTop = cupBottom - fillFrac * (cupBottom - cupTop);
+  const color = blendColor(measured);
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={size} height={size * 1.35}>
+      <path d={`M${cupLeft},${cupTop} L${cupRight},${cupTop} L${cupRight - 4},${cupBottom} Q${(cupLeft+cupRight)/2},${cupBottom+6} ${cupLeft + 4},${cupBottom} Z`} fill="#0D1210" stroke="#3A4A44" strokeWidth="1.5" />
+      <rect x={cupLeft + 1} y={liquidTop} width={cupRight - cupLeft - 2} height={cupBottom - liquidTop} fill={color} opacity="0.92" />
+      {recipe.method === "built" && (
+        <>
+          <circle cx={cupLeft + (cupRight-cupLeft)*0.35} cy={liquidTop + 14} r="7" fill="#ffffff" opacity="0.12" />
+          <circle cx={cupLeft + (cupRight-cupLeft)*0.62} cy={liquidTop + 26} r="9" fill="#ffffff" opacity="0.10" />
+        </>
+      )}
+      <path d={`M${cupLeft},${cupTop} L${cupRight},${cupTop} L${cupRight - 4},${cupBottom} Q${(cupLeft+cupRight)/2},${cupBottom+6} ${cupLeft + 4},${cupBottom} Z`} fill="none" stroke="#3A4A44" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+// ---------- UI atoms ----------
+function BottleChip({ label, active, onClick }) {
+  return (
+    <button onClick={onClick} className="group relative flex flex-col items-center gap-1.5 focus:outline-none" style={{ WebkitTapHighlightColor: "transparent" }}>
+      <svg width="34" height="54" viewBox="0 0 34 54" className="transition-transform duration-150 group-active:scale-95">
+        <rect x="12" y="0" width="10" height="8" rx="1.5" fill={active ? "#B8875A" : "#3A4A44"} />
+        <path d="M9 8 h16 c1.5 0 2 1 2 2.5 v4 c0 1.5 3 3 3 8 v25 c0 3 -2 5.5 -5.5 5.5 h-14 C7 53 5 50.5 5 47.5 v-25 c0-5 3-6.5 3-8 v-4 C8 9 8.5 8 9 8 Z" fill={active ? "#C99A6C" : "#25302B"} stroke={active ? "#8A6339" : "#465A52"} strokeWidth="1" />
+        {active && <rect x="6" y="30" width="22" height="18" rx="4" fill="#B8875A" opacity="0.55" />}
+      </svg>
+      <span className="text-[10.5px] leading-tight text-center max-w-[62px] transition-colors duration-150" style={{ color: active ? "#F1E6D3" : "#7C8B84", fontFamily: "'Fraunces', serif" }}>{label}</span>
+    </button>
+  );
+}
+
+function SectionLabel({ children }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <span className="text-[11px] tracking-[0.28em] uppercase" style={{ color: "#B8875A", fontFamily: "'Fraunces', serif" }}>{children}</span>
+      <span className="flex-1 h-px" style={{ background: "linear-gradient(to right, #3A4A44, transparent)" }} />
+    </div>
+  );
+}
+
+function RecipeCard({ result, onOpen, servings, unit }) {
+  const { recipe, missing, canMake } = result;
+  const effServings = recipe.method === "layered" ? 1 : servings;
+  return (
+    <button onClick={() => onOpen(recipe)} className="text-left w-full rounded-lg p-4 transition-all duration-150 hover:-translate-y-0.5 flex gap-3" style={{ background: canMake ? "linear-gradient(135deg, #24312B, #1C2622)" : "#1A211D", border: canMake ? "1px solid #B8875A55" : "1px solid #2C3833", opacity: canMake ? 1 : 0.72 }}>
+      <div className="shrink-0 pt-1"><GlassArt recipe={recipe} size={44} /></div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-[17px] leading-snug" style={{ color: "#F1E6D3", fontFamily: "'Fraunces', serif", fontWeight: 500 }}>{recipe.name}</h3>
+          <span className="shrink-0 text-[9.5px] tracking-widest uppercase px-1.5 py-0.5 rounded" style={{ color: recipe.type === "shooter" ? "#1A211D" : "#B8875A", background: recipe.type === "shooter" ? "#B8875A" : "transparent", border: recipe.type === "shooter" ? "none" : "1px solid #B8875A66" }}>{recipe.type}</span>
+        </div>
+        <p className="text-[12px] mt-1" style={{ color: "#7C8B84" }}>{recipe.glass} · {METHOD_LABEL[recipe.method]}{effServings > 1 ? ` · ×${effServings}` : ""}</p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {recipe.need.map((n, i) => {
+            const has = !missing.some((m) => m.family === n.family);
+            return <span key={i} className="text-[10.5px] px-2 py-0.5 rounded-full" style={{ color: has ? "#1A211D" : "#C7A87E", background: has ? "#B8875A" : "transparent", border: has ? "none" : "1px dashed #4A5A52" }}>{familyName(n.family)} · {formatAmount(n, effServings, unit)}</span>;
+          })}
+        </div>
+        {!canMake && <p className="text-[11px] mt-2.5" style={{ color: "#8A6339" }}>Missing {missing.length}: {missing.map((m) => familyName(m.family)).join(", ")}</p>}
+      </div>
+    </button>
+  );
+}
+
+function RecipeModal({ recipe, onClose, servings, unit, setUnit, setServings }) {
+  if (!recipe) return null;
+  const isLayered = recipe.method === "layered";
+  const effServings = isLayered ? 1 : servings;
+  const hasDash = recipe.need.some((n) => n.dash);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6" style={{ background: "#0D1210cc" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-xl p-6" style={{ background: "#1C2622", border: "1px solid #3A4A44" }}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-2xl" style={{ color: "#F1E6D3", fontFamily: "'Fraunces', serif" }}>{recipe.name}</h2>
+            <p className="text-[12px] mt-1 tracking-widest uppercase" style={{ color: "#B8875A" }}>{recipe.glass} · {METHOD_LABEL[recipe.method]}</p>
+          </div>
+          <button onClick={onClose} style={{ color: "#7C8B84" }} className="text-sm shrink-0">Close</button>
+        </div>
+
+        <div className="flex justify-center my-4"><GlassArt recipe={recipe} size={110} /></div>
+
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex gap-1.5">
+            {[1, 6].map((s) => (
+              <button key={s} disabled={isLayered && s !== 1} onClick={() => setServings(s)}
+                className="text-[11.5px] px-3 py-1 rounded-full"
+                style={{
+                  color: effServings === s ? "#1A211D" : (isLayered && s !== 1 ? "#4A5A52" : "#A8B5AE"),
+                  background: effServings === s ? "#F1E6D3" : "transparent",
+                  border: `1px solid ${effServings === s ? "#F1E6D3" : "#3A4A44"}`,
+                  cursor: isLayered && s !== 1 ? "not-allowed" : "pointer",
+                }}>
+                {s === 1 ? "1 drink" : "6 drinks"}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            {["oz", "ml"].map((u) => (
+              <button key={u} onClick={() => setUnit(u)} className="text-[11.5px] px-3 py-1 rounded-full uppercase"
+                style={{ color: unit === u ? "#1A211D" : "#A8B5AE", background: unit === u ? "#B8875A" : "transparent", border: `1px solid ${unit === u ? "#B8875A" : "#3A4A44"}` }}>
+                {u}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isLayered && (
+          <p className="text-[11.5px] mb-3 px-3 py-2 rounded" style={{ color: "#C7A87E", background: "#25302B" }}>
+            Layered drinks are built one glass at a time — batching doesn't work here, each pour has to be watched.
+          </p>
+        )}
+        {!isLayered && servings === 6 && hasDash && (
+          <p className="text-[11.5px] mb-3 px-3 py-2 rounded" style={{ color: "#C7A87E", background: "#25302B" }}>
+            Bitters and garnish are per glass — add them fresh when you pour each drink, not into the batch.
+          </p>
+        )}
+        {!isLayered && servings === 6 && (recipe.method === "shaken" || recipe.method === "stirred") && (
+          <p className="text-[11.5px] mb-3 px-3 py-2 rounded" style={{ color: "#7C8B84", background: "#20291F" }}>
+            Batching tip: combine the scaled ingredients ahead and chill well. Shaking/stirring adds dilution you're skipping in bulk — stir in roughly 1 oz of water per 6 drinks before serving, then pour over fresh ice.
+          </p>
+        )}
+
+        <div className="mt-1 space-y-1.5">
+          {(isLayered ? recipe.need : recipe.need).map((n, i) => (
+            <div key={i} className="flex items-center justify-between text-[13.5px]" style={{ color: "#D8CDBB" }}>
+              <span>{isLayered ? `${i + 1}. ` : ""}{familyName(n.family)}{isLayered ? (i === 0 ? " (bottom)" : i === recipe.need.length - 1 ? " (top)" : "") : ""}</span>
+              <span style={{ color: "#B8875A" }}>{formatAmount(n, effServings, unit)}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5">
+          <p className="text-[11px] tracking-[0.2em] uppercase mb-2" style={{ color: "#B8875A" }}>Method</p>
+          <ol className="space-y-1.5">
+            {METHOD_STEPS[recipe.method].map((step, i) => (
+              <li key={i} className="text-[13px] flex gap-2" style={{ color: "#B8B0A0" }}>
+                <span style={{ color: "#B8875A" }}>{i + 1}.</span> {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <p className="text-[13px] mt-4 italic" style={{ color: "#7C8B84" }}>Garnish: {recipe.garnish}</p>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Main ----------
+function BarMatchApp() {
+  const [owned, setOwned] = useState(new Set());
+  const [filter, setFilter] = useState("all");
+  const [openRecipeName, setOpenRecipeName] = useState(null);
+  const [servings, setServings] = useState(1);
+  const [unit, setUnit] = useState("oz");
+  const [installEvent, setInstallEvent] = useState(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setInstallEvent(e); };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setInstalled(true));
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const toggle = (family) => {
+    setOwned((prev) => {
+      const next = new Set(prev);
+      next.has(family) ? next.delete(family) : next.add(family);
+      return next;
+    });
+  };
+
+  const results = useMemo(() => {
+    let r = RECIPES.map((recipe) => matchRecipe(recipe, owned));
+    if (filter === "can_make") r = r.filter((x) => x.canMake);
+    if (filter === "cocktail") r = r.filter((x) => x.recipe.type === "cocktail");
+    if (filter === "shooter") r = r.filter((x) => x.recipe.type === "shooter");
+    r.sort((a, b) => a.missingCount - b.missingCount || a.recipe.name.localeCompare(b.recipe.name));
+    return r;
+  }, [owned, filter]);
+
+  const canMakeCount = results.filter((r) => r.canMake).length;
+  const openRecipe = RECIPES.find((r) => r.name === openRecipeName) || null;
+
+  const uniqueSpirits = useMemo(() => {
+    const seen = new Set();
+    return SPIRITS.filter((s) => (seen.has(s.family) ? false : (seen.add(s.family), true)));
+  }, []);
+  const uniqueMixers = useMemo(() => {
+    const seen = new Set();
+    return MIXERS.filter((s) => (seen.has(s.family) ? false : (seen.add(s.family), true)));
+  }, []);
+
+  return (
+    <div className="min-h-screen w-full" style={{ background: "#161C19", fontFamily: "'Inter', sans-serif" }}>
+      <div className="max-w-5xl mx-auto px-5 py-10 sm:py-14">
+        <header className="mb-10 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-[11px] tracking-[0.3em] uppercase" style={{ color: "#B8875A" }}>What's on the shelf</p>
+            <h1 className="text-[38px] sm:text-[46px] leading-none mt-2" style={{ color: "#F1E6D3", fontFamily: "'Fraunces', serif", fontWeight: 500 }}>Bar Match</h1>
+            <p className="text-[14px] mt-2 max-w-md" style={{ color: "#7C8B84" }}>Tap what you've got. Everything below sorts by how close you are, shows real volumes, and walks you through the pour.</p>
+          </div>
+          {installEvent && !installed && (
+            <button onClick={async () => { installEvent.prompt(); const c = await installEvent.userChoice; if (c.outcome === "accepted") setInstalled(true); setInstallEvent(null); }} className="text-[12px] px-4 py-2 rounded-full shrink-0" style={{ color: "#1A211D", background: "#B8875A" }}>
+              Install app
+            </button>
+          )}
+        </header>
+
+        <section className="mb-8">
+          <SectionLabel>Spirits &amp; Liqueurs</SectionLabel>
+          <div className="grid grid-cols-5 sm:grid-cols-9 gap-x-2 gap-y-4">
+            {uniqueSpirits.map((s) => <BottleChip key={s.family} label={s.name} active={owned.has(s.family)} onClick={() => toggle(s.family)} />)}
+          </div>
+        </section>
+
+        <section className="mb-10">
+          <SectionLabel>Mixers &amp; Extras</SectionLabel>
+          <div className="flex flex-wrap gap-2">
+            {uniqueMixers.map((m) => {
+              const active = owned.has(m.family);
+              return <button key={m.family} onClick={() => toggle(m.family)} className="text-[12.5px] px-3 py-1.5 rounded-full transition-colors duration-150" style={{ color: active ? "#1A211D" : "#A8B5AE", background: active ? "#B8875A" : "transparent", border: active ? "1px solid #B8875A" : "1px solid #3A4A44" }}>{m.name}</button>;
+            })}
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+            <SectionLabel>{canMakeCount} you can make{owned.size === 0 ? " · tap some bottles above" : " right now"}</SectionLabel>
+          </div>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <div className="flex gap-2">
+              {[["all", "All"], ["can_make", "Ready"], ["cocktail", "Cocktails"], ["shooter", "Shooters"]].map(([key, label]) => (
+                <button key={key} onClick={() => setFilter(key)} className="text-[12px] px-3 py-1.5 rounded-full tracking-wide" style={{ color: filter === key ? "#1A211D" : "#7C8B84", background: filter === key ? "#F1E6D3" : "transparent", border: filter === key ? "1px solid #F1E6D3" : "1px solid #3A4A44" }}>{label}</button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1.5">
+                {[1, 6].map((s) => (
+                  <button key={s} onClick={() => setServings(s)} className="text-[11.5px] px-3 py-1 rounded-full" style={{ color: servings === s ? "#1A211D" : "#A8B5AE", background: servings === s ? "#B8875A" : "transparent", border: `1px solid ${servings === s ? "#B8875A" : "#3A4A44"}` }}>{s === 1 ? "1 drink" : "6 drinks"}</button>
+                ))}
+              </div>
+              <div className="flex gap-1.5">
+                {["oz", "ml"].map((u) => (
+                  <button key={u} onClick={() => setUnit(u)} className="text-[11.5px] px-3 py-1 rounded-full uppercase" style={{ color: unit === u ? "#1A211D" : "#A8B5AE", background: unit === u ? "#B8875A" : "transparent", border: `1px solid ${unit === u ? "#B8875A" : "#3A4A44"}` }}>{u}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {results.map((r) => <RecipeCard key={r.recipe.name} result={r} onOpen={setOpenRecipeName} servings={servings} unit={unit} />)}
+          </div>
+        </section>
+      </div>
+      <RecipeModal recipe={openRecipe} onClose={() => setOpenRecipeName(null)} servings={servings} unit={unit} setUnit={setUnit} setServings={setServings} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<BarMatchApp />);
+</script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
