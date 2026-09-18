@@ -334,6 +334,33 @@ function BarMatchApp() {
   const [unit, setUnit] = useState("oz");
   const [installEvent, setInstallEvent] = useState(null);
   const [installed, setInstalled] = useState(false);
+  const [customIngredients, setCustomIngredients] = useState(() => {
+    try {
+      const saved = localStorage.getItem("bar-match-custom-ingredients");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+  const [newName, setNewName] = useState("");
+  const [newFamily, setNewFamily] = useState("vodka");
+
+  const persistCustom = (list) => {
+    setCustomIngredients(list);
+    try { localStorage.setItem("bar-match-custom-ingredients", JSON.stringify(list)); } catch (e) {}
+  };
+
+  const addCustomIngredient = () => {
+    const name = newName.trim();
+    if (!name) return;
+    const next = [...customIngredients, { name, family: newFamily }];
+    persistCustom(next);
+    setOwned((prev) => new Set(prev).add(newFamily));
+    setNewName("");
+  };
+
+  const removeCustomIngredient = (idx) => {
+    const next = customIngredients.filter((_, i) => i !== idx);
+    persistCustom(next);
+  };
 
   useEffect(() => {
     const handler = (e) => { e.preventDefault(); setInstallEvent(e); };
@@ -402,6 +429,57 @@ function BarMatchApp() {
               return <button key={m.family} onClick={() => toggle(m.family)} className="text-[12.5px] px-3 py-1.5 rounded-full transition-colors duration-150" style={{ color: active ? "#1A211D" : "#A8B5AE", background: active ? "#B8875A" : "transparent", border: active ? "1px solid #B8875A" : "1px solid #3A4A44" }}>{m.name}</button>;
             })}
           </div>
+        </section>
+
+        <section className="mb-10">
+          <SectionLabel>Your Bottles</SectionLabel>
+          <p className="text-[12.5px] mb-3" style={{ color: "#7C8B84" }}>
+            Got something specific — Malibu, a local gin, whatever’s on your shelf that isn’t listed above? Name it and tell us which family it belongs to, and it counts toward every recipe that calls for that family.
+          </p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addCustomIngredient(); }}
+              placeholder="Brand name, e.g. Malibu"
+              className="text-[12.5px] px-3 py-1.5 rounded-full outline-none"
+              style={{ background: "#1C2622", border: "1px solid #3A4A44", color: "#F1E6D3" }}
+            />
+            <select
+              value={newFamily}
+              onChange={(e) => setNewFamily(e.target.value)}
+              className="text-[12.5px] px-3 py-1.5 rounded-full outline-none"
+              style={{ background: "#1C2622", border: "1px solid #3A4A44", color: "#F1E6D3" }}
+            >
+              {uniqueSpirits.concat(uniqueMixers).map((s) => (
+                <option key={s.family} value={s.family}>{s.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={addCustomIngredient}
+              className="text-[12.5px] px-4 py-1.5 rounded-full"
+              style={{ background: "#B8875A", color: "#1A211D" }}
+            >
+              Add
+            </button>
+          </div>
+          {customIngredients.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {customIngredients.map((c, i) => {
+                const active = owned.has(c.family);
+                return (
+                  <span key={i} className="flex items-center gap-1.5 text-[12.5px] pl-3 pr-1.5 py-1 rounded-full" style={{ color: active ? "#1A211D" : "#A8B5AE", background: active ? "#B8875A" : "transparent", border: active ? "1px solid #B8875A" : "1px solid #3A4A44" }}>
+                    <button onClick={() => toggle(c.family)} className="text-left">
+                      {c.name} <span style={{ opacity: 0.7 }}>({familyName(c.family)})</span>
+                    </button>
+                    <button onClick={() => removeCustomIngredient(i)} className="ml-1 rounded-full w-4 h-4 flex items-center justify-center text-[10px]" style={{ background: active ? "#1A211D33" : "#3A4A44" }}>
+                      &times;
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <section>
