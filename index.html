@@ -41,12 +41,22 @@ const SPIRITS = [
   { id: "cointreau", name: "Cointreau", family: "orange_liqueur" },
   { id: "coffee_liqueur", name: "Coffee Liqueur", family: "coffee_liqueur" },
   { id: "irish_cream", name: "Irish Cream", family: "irish_cream" },
-  { id: "peach_schnapps", name: "Peach Schnapps", family: "peach_schnapps" },
+  { id: "peach_schnapps", name: "Schnapps", family: "peach_schnapps" },
   { id: "amaretto", name: "Amaretto", family: "amaretto" },
   { id: "vermouth_dry", name: "Dry Vermouth", family: "vermouth_dry" },
   { id: "vermouth_sweet", name: "Sweet Vermouth", family: "vermouth_sweet" },
   { id: "campari", name: "Campari", family: "campari" },
   { id: "prosecco", name: "Prosecco", family: "sparkling" },
+  { id: "brandy", name: "Brandy", family: "brandy" },
+  { id: "mezcal", name: "Mezcal", family: "mezcal" },
+  { id: "aperol", name: "Aperol", family: "aperol" },
+  { id: "chartreuse", name: "Green Chartreuse", family: "chartreuse" },
+  { id: "sambuca", name: "Sambuca", family: "sambuca" },
+  { id: "elderflower", name: "Elderflower Liqueur", family: "elderflower" },
+  { id: "whisky", name: "Whisky", family: "whiskey" },
+  { id: "kahlua", name: "Kahlúa", family: "coffee_liqueur" },
+  { id: "frangelico", name: "Frangelico", family: "hazelnut_liqueur" },
+  { id: "midori", name: "Midori", family: "melon_liqueur" },
 ];
 
 const MIXERS = [
@@ -64,6 +74,7 @@ const MIXERS = [
   { id: "bitters", name: "Angostura Bitters", family: "bitters" },
   { id: "cream", name: "Cream", family: "cream" },
   { id: "coffee", name: "Espresso", family: "coffee" },
+  { id: "lemonade", name: "Lemonade", family: "lemonade" },
 ];
 
 const ALL_INGREDIENTS = [...SPIRITS, ...MIXERS];
@@ -80,6 +91,9 @@ const FAMILY_COLOR = {
   tonic: "#EAF3F0", ginger_beer: "#E3B564", orange_juice: "#F5A623",
   cranberry_juice: "#9B1B30", pineapple_juice: "#F4E06A", grenadine: "#9B1B30",
   bitters: "#5C1A1A", cream: "#F5EFE0", coffee: "#3B2314",
+  brandy: "#A6672D", mezcal: "#E9E3CE", aperol: "#F26B21",
+  chartreuse: "#C9D94A", sambuca: "#F0EDE4", elderflower: "#F0E6B8",
+  hazelnut_liqueur: "#8B5A2B", melon_liqueur: "#9ACD32", lemonade: "#F3E9A0",
 };
 
 const METHOD_STEPS = {
@@ -111,7 +125,14 @@ const RECIPES = [
   { name: "Amaretto Sour", type: "cocktail", method: "shaken", glass: "Rocks", need: [{ family: "amaretto", oz: 2 }, { family: "lemon_juice", oz: 0.75 }, { family: "sweetener", oz: 0.5 }], garnish: "Cherry" },
   { name: "Bellini", type: "cocktail", method: "built", glass: "Flute", need: [{ family: "sparkling", oz: 3 }, { family: "pineapple_juice", oz: 2 }], garnish: "None" },
   { name: "Vodka Soda", type: "cocktail", method: "built", glass: "Highball", need: [{ family: "vodka", oz: 2 }, { family: "soda_water", oz: 4 }, { family: "lime_juice", oz: 0.25 }], garnish: "Lime wedge" },
-  { name: "Sidecar", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "whiskey", oz: 1.5 }, { family: "orange_liqueur", oz: 1 }, { family: "lemon_juice", oz: 0.75 }], garnish: "Sugar rim" },
+  { name: "Sidecar", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "brandy", oz: 1.5 }, { family: "orange_liqueur", oz: 1 }, { family: "lemon_juice", oz: 0.75 }], garnish: "Sugar rim" },
+  { name: "Brandy Sour", type: "cocktail", method: "shaken", glass: "Rocks", need: [{ family: "brandy", oz: 2 }, { family: "lemon_juice", oz: 0.75 }, { family: "sweetener", oz: 0.75 }], garnish: "Cherry, orange slice" },
+  { name: "Aperol Spritz", type: "cocktail", method: "built", glass: "Wine Glass", need: [{ family: "aperol", oz: 3 }, { family: "sparkling", oz: 3 }, { family: "soda_water", oz: 1 }], garnish: "Orange slice" },
+  { name: "Naked and Famous", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "mezcal", oz: 0.75 }, { family: "chartreuse", oz: 0.75 }, { family: "aperol", oz: 0.75 }, { family: "lime_juice", oz: 0.75 }], garnish: "None" },
+  { name: "Mexican Mule", type: "cocktail", method: "built", glass: "Copper Mug", need: [{ family: "mezcal", oz: 2 }, { family: "ginger_beer", oz: 4 }, { family: "lime_juice", oz: 0.5 }], garnish: "Lime wedge" },
+  { name: "St-Germain Spritz", type: "cocktail", method: "built", glass: "Wine Glass", need: [{ family: "elderflower", oz: 1 }, { family: "sparkling", oz: 3 }, { family: "soda_water", oz: 1 }], garnish: "Lemon twist" },
+  { name: "Midori Sour", type: "cocktail", method: "shaken", glass: "Rocks", need: [{ family: "melon_liqueur", oz: 1.5 }, { family: "lemon_juice", oz: 1 }, { family: "sweetener", oz: 0.5 }], garnish: "Lemon wheel, cherry" },
+  { name: "Vodka Lemonade", type: "cocktail", method: "built", glass: "Highball", need: [{ family: "vodka", oz: 2 }, { family: "lemonade", oz: 4 }], garnish: "Lemon wheel" },
   { name: "B-52", type: "shooter", method: "layered", glass: "Shot", need: [{ family: "coffee_liqueur", oz: 0.5 }, { family: "irish_cream", oz: 0.5 }, { family: "orange_liqueur", oz: 0.5 }], garnish: "Unstirred" },
   { name: "Kamikaze", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "vodka", oz: 0.5 }, { family: "orange_liqueur", oz: 0.5 }, { family: "lime_juice", oz: 0.5 }], garnish: "None" },
   { name: "Lemon Drop", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "vodka", oz: 0.5 }, { family: "orange_liqueur", oz: 0.5 }, { family: "lemon_juice", oz: 0.5 }], garnish: "Sugar rim" },
@@ -119,6 +140,8 @@ const RECIPES = [
   { name: "Alabama Slammer", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "amaretto", oz: 0.5 }, { family: "peach_schnapps", oz: 0.5 }, { family: "orange_juice", oz: 0.5 }], garnish: "None" },
   { name: "Mind Eraser", type: "shooter", method: "layered", glass: "Rocks", need: [{ family: "vodka", oz: 1 }, { family: "coffee_liqueur", oz: 1 }, { family: "soda_water", oz: 1 }], garnish: "Straw — drink in one go, unstirred" },
   { name: "Fuzzy Navel Shot", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "peach_schnapps", oz: 0.75 }, { family: "orange_juice", oz: 0.75 }], garnish: "None" },
+  { name: "Slippery Nipple", type: "shooter", method: "layered", glass: "Shot", need: [{ family: "sambuca", oz: 0.75 }, { family: "irish_cream", oz: 0.75 }], garnish: "Unstirred" },
+  { name: "Nutty Irishman", type: "shooter", method: "layered", glass: "Shot", need: [{ family: "hazelnut_liqueur", oz: 0.75 }, { family: "irish_cream", oz: 0.75 }], garnish: "Unstirred" },
 ];
 
 function matchRecipe(recipe, ownedFamilies) {
