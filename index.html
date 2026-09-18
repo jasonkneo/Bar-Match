@@ -9,6 +9,7 @@
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Bar Match" />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -24,10 +25,9 @@
 <body>
 <div id="root"></div>
 
-<script type="text/babel" data-presets="react">
+<script type="text/plain" id="app-source">
 const { useState, useMemo, useEffect } = React;
 
-// ---------- Ingredient catalog ----------
 const SPIRITS = [
   { id: "vodka", name: "Vodka", family: "vodka" },
   { id: "gin", name: "Gin", family: "gin" },
@@ -70,7 +70,6 @@ const ALL_INGREDIENTS = [...SPIRITS, ...MIXERS];
 const familyName = (fam) =>
   ALL_INGREDIENTS.find((i) => i.family === fam)?.name.replace(/^(Dry|Sweet|White|Dark) /, "") || fam;
 
-// Rough real-world liquid colors, used for the poured-glass diagram
 const FAMILY_COLOR = {
   vodka: "#EDEAE2", gin: "#E3E9DD", rum: "#C98A4B", tequila: "#EEE3C4",
   whiskey: "#B87333", orange_liqueur: "#E8A33D", coffee_liqueur: "#3E2A1B",
@@ -92,8 +91,6 @@ const METHOD_STEPS = {
 
 const METHOD_LABEL = { shaken: "Shaken", stirred: "Stirred", built: "Built", layered: "Layered" };
 
-// need: bottom-to-top pour order for layered drinks; order doesn't matter for other methods
-// oz = fluid ounces per single serving. dash = fixed dashes, never scales with batch.
 const RECIPES = [
   { name: "Margarita", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "tequila", oz: 2 }, { family: "orange_liqueur", oz: 1 }, { family: "lime_juice", oz: 1 }], garnish: "Salt rim, lime wheel" },
   { name: "Daiquiri", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "rum", oz: 2 }, { family: "lime_juice", oz: 1 }, { family: "sweetener", oz: 0.75 }], garnish: "Lime wheel" },
@@ -115,7 +112,6 @@ const RECIPES = [
   { name: "Bellini", type: "cocktail", method: "built", glass: "Flute", need: [{ family: "sparkling", oz: 3 }, { family: "pineapple_juice", oz: 2 }], garnish: "None" },
   { name: "Vodka Soda", type: "cocktail", method: "built", glass: "Highball", need: [{ family: "vodka", oz: 2 }, { family: "soda_water", oz: 4 }, { family: "lime_juice", oz: 0.25 }], garnish: "Lime wedge" },
   { name: "Sidecar", type: "cocktail", method: "shaken", glass: "Coupe", need: [{ family: "whiskey", oz: 1.5 }, { family: "orange_liqueur", oz: 1 }, { family: "lemon_juice", oz: 0.75 }], garnish: "Sugar rim" },
-
   { name: "B-52", type: "shooter", method: "layered", glass: "Shot", need: [{ family: "coffee_liqueur", oz: 0.5 }, { family: "irish_cream", oz: 0.5 }, { family: "orange_liqueur", oz: 0.5 }], garnish: "Unstirred" },
   { name: "Kamikaze", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "vodka", oz: 0.5 }, { family: "orange_liqueur", oz: 0.5 }, { family: "lime_juice", oz: 0.5 }], garnish: "None" },
   { name: "Lemon Drop", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "vodka", oz: 0.5 }, { family: "orange_liqueur", oz: 0.5 }, { family: "lemon_juice", oz: 0.5 }], garnish: "Sugar rim" },
@@ -125,7 +121,6 @@ const RECIPES = [
   { name: "Fuzzy Navel Shot", type: "shooter", method: "shaken", glass: "Shot", need: [{ family: "peach_schnapps", oz: 0.75 }, { family: "orange_juice", oz: 0.75 }], garnish: "None" },
 ];
 
-// ---------- Helpers ----------
 function matchRecipe(recipe, ownedFamilies) {
   const missing = recipe.need.filter((n) => !ownedFamilies.has(n.family));
   return { recipe, missing, missingCount: missing.length, canMake: missing.length === 0 };
@@ -135,7 +130,7 @@ const trimNum = (n) => (Math.round(n * 100) / 100).toString().replace(/\.0+$/, "
 const ozToMl = (oz) => Math.round((oz * 29.5735) / 5) * 5;
 
 function formatAmount(item, servings, unit) {
-  if (item.dash) return `${item.dash} dash${item.dash > 1 ? "es" : ""}`; // fixed — added fresh per glass
+  if (item.dash) return `${item.dash} dash${item.dash > 1 ? "es" : ""}`;
   const totalOz = item.oz * servings;
   return unit === "oz" ? `${trimNum(totalOz)} oz` : `${ozToMl(totalOz)} ml`;
 }
@@ -156,7 +151,6 @@ function blendColor(need) {
   return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
 }
 
-// ---------- Glass art ----------
 function GlassArt({ recipe, size = 96 }) {
   const measured = recipe.need.filter((n) => n.oz);
   const total = measured.reduce((s, n) => s + n.oz, 0) || 1;
@@ -164,14 +158,6 @@ function GlassArt({ recipe, size = 96 }) {
   const cupTop = h * 0.12, cupBottom = h * 0.92, cupLeft = w * 0.22, cupRight = w * 0.78;
 
   if (recipe.method === "layered") {
-    let acc = 0;
-    const bands = measured.map((n) => {
-      const frac = n.oz / total;
-      const y1 = cupBottom - acc * (cupBottom - cupTop) / total * total; // placeholder, recompute below
-      acc += n.oz;
-      return { n, frac };
-    });
-    // recompute band rects bottom-up
     let yCursor = cupBottom;
     const rects = [];
     measured.forEach((n) => {
@@ -190,7 +176,7 @@ function GlassArt({ recipe, size = 96 }) {
     );
   }
 
-  const fillFrac = Math.min(total / 6, 1); // visual cap so 4-6oz drinks read as "full"
+  const fillFrac = Math.min(total / 6, 1);
   const liquidTop = cupBottom - fillFrac * (cupBottom - cupTop);
   const color = blendColor(measured);
   return (
@@ -208,7 +194,6 @@ function GlassArt({ recipe, size = 96 }) {
   );
 }
 
-// ---------- UI atoms ----------
 function BottleChip({ label, active, onClick }) {
   return (
     <button onClick={onClick} className="group relative flex flex-col items-center gap-1.5 focus:outline-none" style={{ WebkitTapHighlightColor: "transparent" }}>
@@ -341,7 +326,6 @@ function RecipeModal({ recipe, onClose, servings, unit, setUnit, setServings }) 
   );
 }
 
-// ---------- Main ----------
 function BarMatchApp() {
   const [owned, setOwned] = useState(new Set());
   const [filter, setFilter] = useState("all");
@@ -455,6 +439,13 @@ function BarMatchApp() {
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<BarMatchApp />);
+</script>
+<script>
+  (function () {
+    var src = document.getElementById("app-source").textContent;
+    var compiled = Babel.transform(src, { presets: ["react"] }).code;
+    (0, eval)(compiled);
+  })();
 </script>
 
 <script>
