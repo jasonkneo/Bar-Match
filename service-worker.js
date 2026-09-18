@@ -1,4 +1,4 @@
-const CACHE_NAME = "bar-match-v1";
+const CACHE_NAME = "bar-match-v2";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -23,9 +23,15 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Cache-first for our own files, network-first fallback for everything else (fonts, CDN libs)
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
+
+  // Only cache plain http(s) requests — chrome-extension://, data:, etc. can't be
+  // written to the Cache API and will throw if we try.
+  if (event.request.method !== "GET" || !url.protocol.startsWith("http")) {
+    return;
+  }
+
   const isCore = url.origin === self.location.origin;
 
   if (isCore) {
